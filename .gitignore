@@ -1,0 +1,3 @@
+snapshots/
+*.zip
+__pycache__/
