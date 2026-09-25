@@ -1,5 +1,10 @@
 # Headcount
 
+[![CI](https://img.shields.io/github/actions/workflow/status/IDGBAN/Headcount/ci.yml?branch=main&label=CI&logo=github)](https://github.com/IDGBAN/Headcount/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/IDGBAN/Headcount?label=release&color=1DB954&logo=github)](https://github.com/IDGBAN/Headcount/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/IDGBAN/Headcount/total?color=1DB954&logo=github)](https://github.com/IDGBAN/Headcount/releases)
+[![License: AGPL v3](https://img.shields.io/github/license/IDGBAN/Headcount?color=663366)](LICENSE)
+
 Shows who unfollowed you on Instagram, and who you follow that doesn't follow you back.
 
 It reads the data export Instagram gives you, so it never logs in, never needs a session cookie
@@ -82,3 +87,6 @@ mypy
 ```
 
 CI runs all of it on Python 3.10 and 3.13.
+
+## License
+Released under the [GNU AGPLv3](LICENSE) license.
