@@ -16,9 +16,9 @@ included, pick just followers and following, because the export arrives much fas
 ## Use
 
 ```
-python track.py ingest export.zip     save a snapshot from an export
-python track.py ingest                same, using the newest match in your Downloads
-python track.py serve                 open the viewer
+python headcount.py ingest export.zip     save a snapshot from an export
+python headcount.py ingest                same, using the newest match in your Downloads
+python headcount.py serve                 open the viewer
 ```
 
 Ingest each new export when it arrives. The viewer compares every snapshot with the one before
@@ -26,7 +26,7 @@ it, so the first export only sets a baseline and departures start showing up fro
 
 ## Config
 
-The settings are at the top of `track.py`:
+The settings are at the top of `headcount.py`:
 
 | Setting | What it does |
 |---|---|

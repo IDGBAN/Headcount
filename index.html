@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Follower ledger</title>
+<title>Headcount</title>
 <style>
 :root {
   --field: #0e141a;
@@ -269,7 +269,7 @@ h1 {
 <body>
 <div class="wrap">
   <header>
-    <h1>Follower ledger</h1>
+    <h1>Headcount</h1>
     <div class="meta" id="meta"></div>
   </header>
   <div id="app"></div>
@@ -406,7 +406,7 @@ function render() {
   if (!data || !data.snapshot_count) {
     meta.textContent = "";
     app.innerHTML = `<div class="empty">No snapshots yet.
-      Request your data export in JSON format, then run:<br><code>python track.py ingest export.zip</code></div>`;
+      Request your data export in JSON format, then run:<br><code>python headcount.py ingest export.zip</code></div>`;
     return;
   }
 
@@ -443,7 +443,7 @@ fetch("/api/data")
   .then((data) => { state.data = data; render(); })
   .catch(() => {
     app.innerHTML = `<div class="empty">Couldn't reach the local server.
-      Make sure <code>python track.py serve</code> is still running.</div>`;
+      Make sure <code>python headcount.py serve</code> is still running.</div>`;
   });
 </script>
 </body>
