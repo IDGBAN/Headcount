@@ -157,6 +157,8 @@ h1 {
     top: 0;
     z-index: 1;
   }
+  /* keeps focused rows from scrolling in underneath it */
+  html { scroll-padding-top: var(--toolbar-space, 130px); }
 }
 
 .controls {
@@ -216,7 +218,8 @@ h1 {
   color: var(--dim);
   font-variant-numeric: tabular-nums;
 }
-.status:empty { display: none; }
+/* display: none would drop the live region, and screen readers then miss its first update */
+.status:empty { margin: 0; }
 
 :focus-visible {
   outline: 2px solid var(--focus);
@@ -515,7 +518,11 @@ const noMatches = () => empty(`No handles match "${escapeHtml(state.query.trim()
 function listPanel(tab) {
   const accounts = state.data[tab.key];
   if (!accounts.length) {
-    return { html: empty(tab.empty), status: "" };
+    const ignored = tab.key === "not_following_back" ? state.data.ignored : 0;
+    const message = ignored
+      ? `Everyone you follow follows you back, except ${count(ignored, "account")} in IGNORE.`
+      : tab.empty;
+    return { html: empty(message), status: "" };
   }
   const shown = matching(accounts);
   if (!shown.length) {
@@ -530,7 +537,8 @@ function listPanel(tab) {
     : "";
   return {
     html: rows(visible, tab.tone) + more,
-    status: `${shown.length.toLocaleString()} of ${count(accounts.length, "account")} match`,
+    status: `${shown.length.toLocaleString()} of ${count(accounts.length, "account")} `
+      + (shown.length === 1 ? "matches" : "match"),
   };
 }
 
@@ -586,6 +594,16 @@ function renderPanel({ animate }) {
   document.getElementById("status").textContent = cleanQuery() ? status : "";
 }
 
+// with the toolbar stuck to the top, a new list would otherwise open wherever the old one
+// had been scrolled to
+function revealPanel() {
+  const panel = document.getElementById("panel");
+  const toolbar = app.querySelector(".toolbar");
+  if (panel.getBoundingClientRect().top < toolbar.getBoundingClientRect().bottom) {
+    panel.scrollIntoView({ block: "start" });
+  }
+}
+
 function selectTab(key) {
   state.tab = key;
   state.showAll = false;
@@ -596,7 +614,13 @@ function selectTab(key) {
     button.tabIndex = selected ? 0 : -1;
   });
   renderPanel({ animate: true });
+  revealPanel();
 }
+
+const toolbarWatcher = new ResizeObserver(([entry]) => {
+  document.documentElement.style.setProperty("--toolbar-space",
+    `${entry.target.offsetHeight + 8}px`);
+});
 
 function render() {
   const data = state.data;
@@ -612,6 +636,7 @@ function render() {
   meta.textContent = `${day(data.taken_at)} · ${count(data.snapshot_count, "snapshot")}`;
   app.innerHTML = headline(data) + stats(data) + toolbar(data) +
     `<div id="panel" role="tabpanel" aria-labelledby="tab-${state.tab}"></div>`;
+  toolbarWatcher.observe(app.querySelector(".toolbar"));
   renderPanel({ animate: true });
 }
 
@@ -620,16 +645,26 @@ function fail(message) {
   app.innerHTML = empty(message);
 }
 
-let filterTimer;
+let pendingFilter = null;
 
 function setQuery(query) {
-  clearTimeout(filterTimer);
+  clearTimeout(pendingFilter);
+  pendingFilter = null;
   state.query = query;
   state.showAll = false;
   renderPanel({ animate: false });
+  revealPanel();
+}
+
+// a render still waiting out the debounce would replace rows that already have focus
+function flushFilter() {
+  if (pendingFilter !== null) setQuery(document.getElementById("search").value);
 }
 
 app.addEventListener("click", (event) => {
+  if (!event.target.closest("[data-tab], [data-goto], [data-show-all], [data-clear]")) return;
+  flushFilter();
+
   const tab = event.target.closest("[data-tab]");
   if (tab) {
     selectTab(tab.dataset.tab);
@@ -661,8 +696,14 @@ app.addEventListener("click", (event) => {
 });
 
 app.addEventListener("keydown", (event) => {
-  if (!event.target.closest("[role=tab]")) return;
-  const index = TABS.findIndex((tab) => tab.key === state.tab);
+  if (event.target.id === "search" && (event.key === "Tab" || event.key === "Enter")) {
+    flushFilter();
+    return;
+  }
+
+  const focused = event.target.closest("[role=tab]");
+  if (!focused || event.altKey || event.ctrlKey || event.metaKey) return;
+  const index = TABS.findIndex((tab) => tab.key === focused.dataset.tab);
   const moves = { ArrowLeft: index - 1, ArrowRight: index + 1, Home: 0, End: TABS.length - 1 };
   if (!(event.key in moves)) return;
 
@@ -674,14 +715,23 @@ app.addEventListener("keydown", (event) => {
 
 app.addEventListener("input", (event) => {
   if (event.target.id !== "search") return;
-  clearTimeout(filterTimer);
+  clearTimeout(pendingFilter);
   const query = event.target.value;
-  filterTimer = setTimeout(() => setQuery(query), FILTER_DELAY_MS);
+  pendingFilter = setTimeout(() => setQuery(query), FILTER_DELAY_MS);
 });
 
 window.addEventListener("hashchange", () => {
   const key = tabFromHash();
-  if (state.data && document.getElementById("panel") && key !== state.tab) selectTab(key);
+  const panel = document.getElementById("panel");
+  if (key === state.tab) return;
+  if (!panel) {
+    state.tab = key;
+    return;
+  }
+
+  const focusWasInPanel = panel.contains(document.activeElement);
+  selectTab(key);
+  if (focusWasInPanel) document.getElementById(`tab-${key}`).focus();
 });
 
 document.addEventListener("keydown", (event) => {
