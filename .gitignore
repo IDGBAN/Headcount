@@ -1,3 +1,13 @@
+# exports and everything made from them are personal data
 snapshots/
 *.zip
+instagram-*/
+threads-*/
+*.json
+*.html
+!/index.html
+
 __pycache__/
+.venv/
+.mypy_cache/
+.ruff_cache/
