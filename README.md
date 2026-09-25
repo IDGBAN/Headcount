@@ -38,9 +38,9 @@ them:
 
 - an export with no followers list or no following list
 - a follower list that's damaged or isn't valid JSON
-- an export missing more than half the followers in the last snapshot. That's almost always a
-  date range other than All time, or an export from a different account. If the drop is real,
-  raise `MAX_FOLLOWER_DROP` and ingest it again.
+- an export missing more than half the followers in the last snapshot, once at least 20 of
+  them are missing. That's almost always a date range other than All time, or an export from a
+  different account. If the drop is real, raise `MAX_FOLLOWER_DROP` and ingest it again.
 
 ## Config
 
@@ -54,7 +54,7 @@ Settings live at the top of `headcount.py`:
 | `SKIP_IDENTICAL` | don't save a snapshot when nothing changed since the last one |
 | `IGNORE` | handles to leave out of "doesn't follow back" |
 | `SKIP_TOKENS`, `SKIP_FOLDERS` | file and folder names that mark a JSON file as not a follower list |
-| `MAX_FOLLOWER_DROP`, `DROP_FLOOR` | how big a drop in followers makes ingest refuse an export |
+| `MAX_FOLLOWER_DROP`, `DROP_FLOOR` | share of followers an export can lose before ingest refuses it, and how many have to be missing before that check applies |
 
 ## Limits
 
