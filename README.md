@@ -1,4 +1,4 @@
-# Follower ledger
+# Headcount
 
 Shows who unfollowed you on Instagram, and who you follow that doesn't follow you back.
 
@@ -18,9 +18,9 @@ following only. The export arrives much faster that way.
 ## Use
 
 ```
-python track.py ingest export.zip     save a snapshot from an export
-python track.py ingest                same, using the newest match in your Downloads
-python track.py serve                 open the viewer
+python headcount.py ingest export.zip     save a snapshot from an export
+python headcount.py ingest                same, using the newest match in your Downloads
+python headcount.py serve                 open the viewer
 ```
 
 `ingest` also takes an unzipped export folder. On macOS and most Linux systems the command is
@@ -44,7 +44,7 @@ them:
 
 ## Config
 
-Settings live at the top of `track.py`:
+Settings live at the top of `headcount.py`:
 
 | Setting | What it does |
 |---|---|

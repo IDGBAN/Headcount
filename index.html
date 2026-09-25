@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Follower ledger</title>
+<title>Headcount</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23141d25'/%3E%3Cpath d='M4 5h8M4 8h8M4 11h5' stroke='%235fc0a3' stroke-width='1.6'/%3E%3C/svg%3E">
 <style>
 :root {
@@ -358,7 +358,7 @@ h1 {
 <body>
 <div class="wrap">
   <header>
-    <h1>Follower ledger</h1>
+    <h1>Headcount</h1>
     <p class="meta" id="meta"></p>
   </header>
   <main id="app" aria-busy="true">
@@ -629,7 +629,7 @@ function render() {
   if (!data.snapshot_count) {
     meta.textContent = "";
     app.innerHTML = empty(`No snapshots yet. Request your data export in JSON format, run
-      <br><code>python track.py ingest export.zip</code><br>and then reload this page.`);
+      <br><code>python headcount.py ingest export.zip</code><br>and then reload this page.`);
     return;
   }
 
@@ -747,7 +747,7 @@ async function load() {
   try {
     response = await fetch("/api/data");
   } catch {
-    fail(`Couldn't reach the local server. Make sure <code>python track.py serve</code> is still running.`);
+    fail(`Couldn't reach the local server. Make sure <code>python headcount.py serve</code> is still running.`);
     return;
   }
 
@@ -756,7 +756,7 @@ async function load() {
     state.data = await response.json();
   } catch (error) {
     fail(`The server couldn't read your snapshots (${escapeHtml(error.message)}).
-      The terminal running <code>python track.py serve</code> has the details.`);
+      The terminal running <code>python headcount.py serve</code> has the details.`);
     return;
   }
   render();

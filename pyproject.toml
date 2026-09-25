@@ -6,5 +6,5 @@ target-version = "py310"
 select = ["E", "F", "W", "B", "UP", "I", "SIM"]
 
 [tool.mypy]
-files = ["track.py"]
+files = ["headcount.py"]
 strict = true

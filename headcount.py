@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Follower tracker built on Instagram's own data export.
+"""Headcount, a follower tracker built on Instagram's own data export.
 
-    python track.py ingest [path]   read an export zip/folder and save a snapshot
-    python track.py serve           diff the saved snapshots and open the viewer
+    python headcount.py ingest [path]   read an export zip/folder and save a snapshot
+    python headcount.py serve           diff the saved snapshots and open the viewer
 """
 
 import io
@@ -458,7 +458,7 @@ def serve() -> None:
     except OSError as error:
         raise SystemExit(
             f"can't listen on port {PORT} ({error.strerror or error})\n"
-            "the viewer may already be running; otherwise change PORT at the top of track.py"
+            "the viewer may already be running; otherwise change PORT at the top of headcount.py"
         ) from None
 
     url = f"http://127.0.0.1:{PORT}/"
@@ -508,7 +508,7 @@ def ingest(source: Path | None) -> None:
             f"not saved: {len(lost)} of the {len(before)} followers in the last snapshot "
             "are missing from this export\n"
             "its date range probably wasn't set to All time, or it's from another account\n"
-            "if the drop is real, raise MAX_FOLLOWER_DROP at the top of track.py and ingest again"
+            "if the drop is real, raise MAX_FOLLOWER_DROP in headcount.py and ingest again"
         )
 
     if SKIP_IDENTICAL and same_accounts(previous, snapshot):
