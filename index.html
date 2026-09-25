@@ -4,12 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Follower ledger</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23141d25'/%3E%3Cpath d='M4 5h8M4 8h8M4 11h5' stroke='%235fc0a3' stroke-width='1.6'/%3E%3C/svg%3E">
 <style>
 :root {
+  color-scheme: dark;
+
   --field: #0e141a;
   --panel: #141d25;
   --raised: #1a252f;
   --rule: #24333f;
+  --edge: #56687a;
   --ink: #dde6ee;
   --dim: #7b8fa1;
   --loss: #e07a63;
@@ -37,6 +41,16 @@ body {
 
 .wrap { max-width: 820px; margin: 0 auto; }
 
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 header {
   display: flex;
   align-items: baseline;
@@ -55,6 +69,7 @@ h1 {
 }
 
 .meta {
+  margin: 0;
   font-family: var(--mono);
   font-size: 12px;
   color: var(--dim);
@@ -63,6 +78,7 @@ h1 {
 
 /* the reason the app exists gets the top slot */
 .headline {
+  margin: 0;
   padding: 26px 0 24px;
   border-bottom: 1px solid var(--rule);
   font-size: 19px;
@@ -70,9 +86,9 @@ h1 {
   letter-spacing: -0.01em;
 }
 
-.headline .quiet { color: var(--dim); }
-.headline .loss { color: var(--loss); }
-.headline .gain { color: var(--gain); }
+.quiet { color: var(--dim); }
+.loss { color: var(--loss); }
+.gain { color: var(--gain); }
 
 .handle-inline {
   font-family: var(--mono);
@@ -82,36 +98,65 @@ h1 {
   border-bottom: 1px solid currentColor;
   padding-bottom: 1px;
 }
-.handle-inline:hover { opacity: 0.7; }
+.handle-inline:hover { color: var(--ink); }
+
+.link-button {
+  background: none;
+  border: 0;
+  border-bottom: 1px dotted currentColor;
+  padding: 0 0 1px;
+  color: var(--dim);
+  font: inherit;
+  font-size: 0.85em;
+  cursor: pointer;
+}
+.link-button:hover { color: var(--ink); }
 
 .stats {
   display: flex;
   flex-wrap: wrap;
   gap: 2px;
-  margin: 20px 0 28px;
+  margin: 20px 0 20px;
 }
 
 .stat {
   flex: 1 1 120px;
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: flex-end;
   background: var(--panel);
   padding: 14px 16px;
 }
 .stat:first-child { border-radius: 3px 0 0 3px; }
 .stat:last-child  { border-radius: 0 3px 3px 0; }
 
-.stat b {
-  display: block;
+.stat dd {
+  margin: 0;
   font-size: 24px;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
 }
 
-.stat span {
+.stat dt {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.09em;
   color: var(--dim);
+}
+
+.toolbar {
+  padding: 8px 0 10px;
+  background: var(--field);
+}
+
+/* stays in reach while scrolling through a few thousand rows, where there's room for it */
+@media (min-width: 561px) and (min-height: 500px) {
+  .toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
 }
 
 .controls {
@@ -119,19 +164,15 @@ h1 {
   gap: 10px;
   align-items: center;
   flex-wrap: wrap;
-  margin-bottom: 4px;
 }
 
 .tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 2px;
-  overflow-x: auto;
-  scrollbar-width: none;
 }
-.tabs::-webkit-scrollbar { display: none; }
 
 .tabs button {
-  flex: 0 0 auto;
   background: none;
   border: 0;
   border-bottom: 2px solid transparent;
@@ -147,11 +188,11 @@ h1 {
   color: var(--ink);
   border-bottom-color: var(--focus);
 }
-.tabs button .count {
+.tabs .count {
   font-family: var(--mono);
   font-size: 12px;
   color: var(--dim);
-  margin-left: 6px;
+  margin-left: 2px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -159,7 +200,7 @@ h1 {
   flex: 1 1 180px;
   min-width: 140px;
   background: var(--panel);
-  border: 1px solid var(--rule);
+  border: 1px solid var(--edge);
   border-radius: 3px;
   color: var(--ink);
   font-family: var(--mono);
@@ -168,12 +209,32 @@ h1 {
 }
 #search::placeholder { color: var(--dim); }
 
+.status {
+  margin: 8px 0 0;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+}
+.status:empty { display: none; }
+
 :focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
 
-.list { margin-top: 18px; }
+.list {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.group .list { margin-top: 0; }
+
+/* skips layout and paint for rows far off screen, which is most of a long list */
+.list li {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 40px;
+}
 
 .row {
   display: flex;
@@ -193,6 +254,7 @@ h1 {
 .row.gain { border-left-color: var(--gain); }
 
 .row .handle {
+  min-width: 0;
   font-family: var(--mono);
   font-size: 13.5px;
   overflow: hidden;
@@ -208,7 +270,21 @@ h1 {
   flex: 0 0 auto;
   opacity: 0;
 }
-.row:hover .go { opacity: 1; }
+.row:hover .go,
+.row:focus-visible .go { opacity: 1; }
+
+.entries { margin-top: 8px; }
+
+.note {
+  margin: 8px 0 18px;
+  font-size: 13px;
+  color: var(--dim);
+}
+
+.show-rest {
+  margin: 14px 0 0;
+  text-align: center;
+}
 
 .entry { margin-bottom: 26px; }
 
@@ -222,10 +298,10 @@ h1 {
   font-variant-numeric: tabular-nums;
 }
 
-.group { margin-bottom: 10px; }
+.group { margin-bottom: 18px; }
 
 .group h3 {
-  margin: 0 0 5px;
+  margin: 0 0 6px;
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
@@ -236,6 +312,7 @@ h1 {
 .group.gain h3 { color: var(--gain); }
 
 .empty {
+  margin: 0;
   padding: 44px 0;
   color: var(--dim);
   text-align: center;
@@ -252,7 +329,9 @@ h1 {
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .row, .entry {
+  /* only the first screenful is worth animating */
+  .animate li:nth-child(-n+20) .row,
+  .animate .entry:nth-child(-n+6) {
     animation: rise 260ms cubic-bezier(0.2, 0.7, 0.3, 1) backwards;
   }
   @keyframes rise {
@@ -260,9 +339,16 @@ h1 {
   }
 }
 
+@media (forced-colors: active) {
+  .tabs button { border-bottom-color: Canvas; }
+  .tabs button[aria-selected="true"] { border-bottom-color: Highlight; font-weight: 600; }
+}
+
 @media (max-width: 560px) {
   .stat { flex-basis: 45%; border-radius: 3px !important; }
   .headline { font-size: 17px; }
+  /* no hover on touch screens, and long handles need the room */
+  .row .go { display: none; }
 }
 </style>
 </head>
@@ -270,64 +356,112 @@ h1 {
 <div class="wrap">
   <header>
     <h1>Follower ledger</h1>
-    <div class="meta" id="meta"></div>
+    <p class="meta" id="meta"></p>
   </header>
-  <div id="app"></div>
+  <main id="app" aria-busy="true">
+    <p class="empty">Loading snapshots...</p>
+  </main>
 </div>
 
 <script>
 const TABS = [
-  { key: "not_following_back", label: "Doesn't follow back", tone: "loss" },
-  { key: "not_followed_back",  label: "You don't follow back", tone: "" },
-  { key: "timeline",           label: "Changes", tone: "" },
+  { key: "not_following_back", label: "Doesn't follow back", tone: "loss",
+    empty: "Everyone you follow follows you back." },
+  { key: "not_followed_back", label: "You don't follow back", tone: "",
+    empty: "You follow back everyone who follows you." },
+  { key: "timeline", label: "Changes", tone: "" },
 ];
 
-const state = { data: null, tab: TABS[0].key, query: "" };
+const GROUPS = [
+  { key: "lost_followers", label: "Unfollowed you", tone: "loss" },
+  { key: "new_followers", label: "Started following you", tone: "gain" },
+  { key: "you_unfollowed", label: "You unfollowed", tone: "" },
+  { key: "you_followed", label: "You started following", tone: "" },
+];
+
+const HEADLINE_HANDLES = 4;
+const ROW_LIMIT = 500;
+const FILTER_DELAY_MS = 120;
+const ROW_STAGGER_MS = 14;
+const ENTRY_STAGGER_MS = 30;
+
+const state = { data: null, tab: tabFromHash(), query: "", showAll: false };
 
 const app = document.getElementById("app");
 const meta = document.getElementById("meta");
 
-const escape = (value) => String(value).replace(/[&<>"']/g,
+const escapeHtml = (value) => String(value).replace(/[&<>"']/g,
   (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-const day = (stamp) => new Date(stamp).toLocaleDateString(undefined,
-  { month: "short", day: "numeric" });
+const count = (n, one, many = `${one}s`) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
 
-const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+function tabFromHash() {
+  const key = location.hash.slice(1);
+  return TABS.some((tab) => tab.key === key) ? key : TABS[0].key;
+}
 
-function inlineHandles(accounts, tone, limit = 4) {
-  const shown = accounts.slice(0, limit).map((a) =>
-    `<a class="handle-inline" href="${escape(a.href)}" target="_blank" rel="noreferrer">@${escape(a.username)}</a>`
+function day(stamp) {
+  const date = new Date(stamp);
+  const sameYear = date.getFullYear() === new Date().getFullYear();
+  return date.toLocaleDateString(undefined,
+    { month: "short", day: "numeric", year: sameYear ? undefined : "numeric" });
+}
+
+const clock = (stamp) => new Date(stamp).toLocaleTimeString(undefined,
+  { hour: "numeric", minute: "2-digit" });
+
+function period(from, to) {
+  return day(from) === day(to)
+    ? `${day(from)}, ${clock(from)} → ${clock(to)}`
+    : `${day(from)} → ${day(to)}`;
+}
+
+const hasChanges = (entry) => GROUPS.some((group) => entry[group.key].length);
+
+const cleanQuery = () => state.query.trim().toLowerCase().replace(/^@/, "");
+
+function matching(accounts) {
+  const query = cleanQuery();
+  return query ? accounts.filter((a) => a.username.includes(query)) : accounts;
+}
+
+function handleLinks(accounts, tone) {
+  const shown = accounts.slice(0, HEADLINE_HANDLES).map((a) =>
+    `<a class="handle-inline" href="${escapeHtml(a.href)}" target="_blank" rel="noreferrer">@${escapeHtml(a.username)}</a>`
   ).join(" ");
-  const rest = accounts.length - limit;
-  return `<span class="${tone}">${shown}${rest > 0 ? ` <span class="quiet">+${rest} more</span>` : ""}</span>`;
+  const rest = accounts.length - HEADLINE_HANDLES;
+  const more = rest > 0
+    ? ` <button type="button" class="link-button" data-goto="timeline">+${rest.toLocaleString()} more</button>`
+    : "";
+  return `<span class="${tone}">${shown}</span>${more}`;
 }
 
 function headline(data) {
   const change = data.since_last;
   if (!change) {
-    return `<div class="headline"><span class="quiet">First snapshot saved.
-      Ingest another export later and this is where departures show up.</span></div>`;
+    return `<p class="headline quiet">First snapshot saved.
+      Ingest another export later and this is where departures show up.</p>`;
+  }
+
+  const since = escapeHtml(day(change.from));
+  const lost = change.lost_followers;
+  const gained = change.new_followers;
+  if (!lost.length && !gained.length) {
+    return `<p class="headline quiet">Since ${since}, nobody came or went.</p>`;
   }
 
   const parts = [];
-  const gone = change.lost_followers.length;
-  if (gone) {
-    parts.push(`<span class="loss">${gone === 1 ? "1 person" : gone + " people"}</span>
-      unfollowed you — ${inlineHandles(change.lost_followers, "loss")}`);
+  if (lost.length) {
+    const who = lost.length === 1 ? "1 person" : `${lost.length.toLocaleString()} people`;
+    parts.push(`<span class="loss">${who} unfollowed you:</span> ${handleLinks(lost, "loss")}`);
   }
-  if (change.new_followers.length) {
-    parts.push(`<span class="gain">${plural(change.new_followers.length, "new follower")}</span> —
-      ${inlineHandles(change.new_followers, "gain")}`);
+  if (gained.length) {
+    parts.push(`<span class="gain">${count(gained.length, "new follower")}:</span>
+      ${handleLinks(gained, "gain")}`);
   }
 
-  const body = parts.length
-    ? parts.join(`<span class="quiet"> · </span>`)
-    : `<span class="quiet">Nobody came or went.</span>`;
-
-  return `<div class="headline">
-    <span class="quiet">Since ${escape(day(change.from))} —</span> ${body}
-  </div>`;
+  return `<p class="headline"><span class="quiet">Since ${since},</span>
+    ${parts.join(`<span class="quiet"> · </span>`)}</p>`;
 }
 
 function stats(data) {
@@ -337,114 +471,248 @@ function stats(data) {
     ["Mutuals", data.totals.mutuals],
     ["Doesn't follow back", data.not_following_back.length],
   ];
-  return `<div class="stats">${cells.map(([label, value]) =>
-    `<div class="stat"><b>${value}</b><span>${label}</span></div>`).join("")}</div>`;
+  return `<dl class="stats">${cells.map(([label, value]) =>
+    `<div class="stat"><dt>${label}</dt><dd>${value.toLocaleString()}</dd></div>`).join("")}</dl>`;
 }
 
-function controls(data) {
+function tabCount(data, key) {
+  return key === "timeline" ? data.timeline.filter(hasChanges).length : data[key].length;
+}
+
+function toolbar(data) {
   const buttons = TABS.map((tab) => {
-    const count = tab.key === "timeline" ? data.timeline.length : data[tab.key].length;
-    return `<button role="tab" data-tab="${tab.key}"
-      aria-selected="${state.tab === tab.key}">${tab.label}<span class="count">${count}</span></button>`;
+    const selected = tab.key === state.tab;
+    return `<button type="button" role="tab" id="tab-${tab.key}" data-tab="${tab.key}"
+      aria-controls="panel" aria-selected="${selected}" tabindex="${selected ? 0 : -1}"
+      >${tab.label} <span class="count">${tabCount(data, tab.key).toLocaleString()}</span></button>`;
   }).join("");
 
-  return `<div class="controls">
-    <div class="tabs" role="tablist">${buttons}</div>
-    <input id="search" type="search" placeholder="filter handles"
-      value="${escape(state.query)}" autocomplete="off">
+  return `<div class="toolbar">
+    <div class="controls">
+      <div class="tabs" role="tablist" aria-label="Lists">${buttons}</div>
+      <label class="visually-hidden" for="search">Filter by handle</label>
+      <input id="search" type="search" placeholder="filter handles" autocomplete="off"
+        spellcheck="false" value="${escapeHtml(state.query)}">
+    </div>
+    <p class="status" id="status" role="status"></p>
   </div>`;
 }
 
 function rows(accounts, tone) {
+  return `<ul class="list">${accounts.map((account, index) =>
+    `<li><a class="row ${tone}" href="${escapeHtml(account.href)}" target="_blank" rel="noreferrer"
+        style="animation-delay:${index * ROW_STAGGER_MS}ms">
+      <span class="handle">@${escapeHtml(account.username)}</span>
+      <span class="go" aria-hidden="true">open</span>
+    </a></li>`).join("")}</ul>`;
+}
+
+const empty = (message) => `<p class="empty">${message}</p>`;
+
+const noMatches = () => empty(`No handles match "${escapeHtml(state.query.trim())}".
+  <button type="button" class="link-button" data-clear>Clear the filter</button>`);
+
+function listPanel(tab) {
+  const accounts = state.data[tab.key];
   if (!accounts.length) {
-    return `<div class="empty">Nothing here.</div>`;
+    return { html: empty(tab.empty), status: "" };
   }
-  return `<div class="list">${accounts.map((account, index) =>
-    `<a class="row ${tone}" href="${escape(account.href)}" target="_blank" rel="noreferrer"
-        style="animation-delay:${Math.min(index, 14) * 14}ms">
-      <span class="handle">@${escape(account.username)}</span>
-      <span class="go">open</span>
-    </a>`).join("")}</div>`;
+  const shown = matching(accounts);
+  if (!shown.length) {
+    return { html: noMatches(), status: "no accounts match" };
+  }
+
+  const visible = state.showAll ? shown : shown.slice(0, ROW_LIMIT);
+  const rest = shown.length - visible.length;
+  const more = rest > 0
+    ? `<p class="show-rest"><button type="button" class="link-button" data-show-all
+        >Show the other ${rest.toLocaleString()}</button></p>`
+    : "";
+  return {
+    html: rows(visible, tab.tone) + more,
+    status: `${shown.length.toLocaleString()} of ${count(accounts.length, "account")} match`,
+  };
 }
 
-function timeline(entries) {
-  const groups = [
-    ["lost_followers", "Unfollowed you", "loss"],
-    ["new_followers", "Started following you", "gain"],
-    ["you_unfollowed", "You unfollowed", ""],
-    ["you_followed", "You started following", ""],
-  ];
-
-  const visible = entries.filter((entry) =>
-    groups.some(([key]) => filter(entry[key]).length));
-
-  if (!visible.length) {
-    return `<div class="empty">No changes recorded yet.</div>`;
+function timelinePanel() {
+  const entries = state.data.timeline.filter(hasChanges);
+  if (!entries.length) {
+    return {
+      html: empty(state.data.snapshot_count < 2
+        ? "Nothing to compare yet. Changes appear once you've ingested a second export."
+        : "None of your snapshots differ from the one before."),
+      status: "",
+    };
   }
 
-  return visible.map((entry, index) => {
-    const body = groups.map(([key, label, tone]) => {
-      const accounts = filter(entry[key]);
-      if (!accounts.length) return "";
-      return `<div class="group ${tone}"><h3>${label} (${accounts.length})</h3>
-        ${rows(accounts, tone)}</div>`;
-    }).join("");
+  let matches = 0;
+  const sections = entries.map((entry) => {
+    const groups = GROUPS.map((group) => ({ ...group, accounts: matching(entry[group.key]) }))
+      .filter((group) => group.accounts.length);
+    groups.forEach((group) => { matches += group.accounts.length; });
+    return { entry, groups };
+  }).filter((section) => section.groups.length);
 
-    return `<div class="entry" style="animation-delay:${Math.min(index, 10) * 30}ms">
-      <h2>${escape(day(entry.from))} &rarr; ${escape(day(entry.to))}</h2>${body}</div>`;
+  if (!sections.length) {
+    return { html: noMatches(), status: "no changes match" };
+  }
+
+  const html = sections.map(({ entry, groups }, index) => {
+    const body = groups.map((group) =>
+      `<div class="group ${group.tone}">
+        <h3>${group.label} (${group.accounts.length.toLocaleString()})</h3>
+        ${rows(group.accounts, group.tone)}
+      </div>`).join("");
+    return `<section class="entry" style="animation-delay:${index * ENTRY_STAGGER_MS}ms">
+      <h2>${escapeHtml(period(entry.from, entry.to))}</h2>${body}</section>`;
   }).join("");
+
+  const note = `<p class="note">Renamed, deactivated and blocked accounts show up as
+    unfollows too, because the export only lists usernames.</p>`;
+  return {
+    html: `<div class="entries">${note}${html}</div>`,
+    status: count(matches, "match", "matches"),
+  };
 }
 
-function filter(accounts) {
-  const query = state.query.trim().toLowerCase().replace(/^@/, "");
-  return query ? accounts.filter((a) => a.username.includes(query)) : accounts;
+function renderPanel({ animate }) {
+  const panel = document.getElementById("panel");
+  const tab = TABS.find((t) => t.key === state.tab);
+  const { html, status } = tab.key === "timeline" ? timelinePanel() : listPanel(tab);
+
+  panel.setAttribute("aria-labelledby", `tab-${tab.key}`);
+  panel.classList.toggle("animate", animate);
+  panel.innerHTML = html;
+  document.getElementById("status").textContent = cleanQuery() ? status : "";
+}
+
+function selectTab(key) {
+  state.tab = key;
+  state.showAll = false;
+  history.replaceState(null, "", `#${key}`);
+  app.querySelectorAll("[role=tab]").forEach((button) => {
+    const selected = button.dataset.tab === key;
+    button.setAttribute("aria-selected", selected);
+    button.tabIndex = selected ? 0 : -1;
+  });
+  renderPanel({ animate: true });
 }
 
 function render() {
   const data = state.data;
+  app.removeAttribute("aria-busy");
 
-  if (!data || !data.snapshot_count) {
+  if (!data.snapshot_count) {
     meta.textContent = "";
-    app.innerHTML = `<div class="empty">No snapshots yet.
-      Request your data export in JSON format, then run:<br><code>python track.py ingest export.zip</code></div>`;
+    app.innerHTML = empty(`No snapshots yet. Request your data export in JSON format, run
+      <br><code>python track.py ingest export.zip</code><br>and then reload this page.`);
     return;
   }
 
-  meta.textContent = `${day(data.taken_at)} · ${plural(data.snapshot_count, "snapshot")}`;
-
-  const panel = state.tab === "timeline"
-    ? timeline(data.timeline)
-    : rows(filter(data[state.tab]), TABS.find((t) => t.key === state.tab).tone);
-
-  app.innerHTML = headline(data) + stats(data) + controls(data) + panel;
-
-  app.querySelectorAll("[data-tab]").forEach((button) => {
-    button.addEventListener("click", () => {
-      state.tab = button.dataset.tab;
-      render();
-    });
-  });
-
-  const search = document.getElementById("search");
-  search.addEventListener("input", (event) => {
-    state.query = event.target.value;
-    const active = document.activeElement === search;
-    render();
-    if (active) {
-      const next = document.getElementById("search");
-      next.focus();
-      next.setSelectionRange(next.value.length, next.value.length);
-    }
-  });
+  meta.textContent = `${day(data.taken_at)} · ${count(data.snapshot_count, "snapshot")}`;
+  app.innerHTML = headline(data) + stats(data) + toolbar(data) +
+    `<div id="panel" role="tabpanel" aria-labelledby="tab-${state.tab}"></div>`;
+  renderPanel({ animate: true });
 }
 
-fetch("/api/data")
-  .then((response) => response.json())
-  .then((data) => { state.data = data; render(); })
-  .catch(() => {
-    app.innerHTML = `<div class="empty">Couldn't reach the local server.
-      Make sure <code>python track.py serve</code> is still running.</div>`;
-  });
+function fail(message) {
+  app.removeAttribute("aria-busy");
+  app.innerHTML = empty(message);
+}
+
+let filterTimer;
+
+function setQuery(query) {
+  clearTimeout(filterTimer);
+  state.query = query;
+  state.showAll = false;
+  renderPanel({ animate: false });
+}
+
+app.addEventListener("click", (event) => {
+  const tab = event.target.closest("[data-tab]");
+  if (tab) {
+    selectTab(tab.dataset.tab);
+    return;
+  }
+
+  const jump = event.target.closest("[data-goto]");
+  if (jump) {
+    selectTab(jump.dataset.goto);
+    const target = document.getElementById(`tab-${jump.dataset.goto}`);
+    target.focus();
+    target.scrollIntoView({ block: "nearest" });
+    return;
+  }
+
+  if (event.target.closest("[data-show-all]")) {
+    state.showAll = true;
+    renderPanel({ animate: false });
+    document.querySelectorAll("#panel .row")[ROW_LIMIT]?.focus();
+    return;
+  }
+
+  if (event.target.closest("[data-clear]")) {
+    const search = document.getElementById("search");
+    search.value = "";
+    setQuery("");
+    search.focus();
+  }
+});
+
+app.addEventListener("keydown", (event) => {
+  if (!event.target.closest("[role=tab]")) return;
+  const index = TABS.findIndex((tab) => tab.key === state.tab);
+  const moves = { ArrowLeft: index - 1, ArrowRight: index + 1, Home: 0, End: TABS.length - 1 };
+  if (!(event.key in moves)) return;
+
+  event.preventDefault();
+  const next = TABS[(moves[event.key] + TABS.length) % TABS.length];
+  selectTab(next.key);
+  document.getElementById(`tab-${next.key}`).focus();
+});
+
+app.addEventListener("input", (event) => {
+  if (event.target.id !== "search") return;
+  clearTimeout(filterTimer);
+  const query = event.target.value;
+  filterTimer = setTimeout(() => setQuery(query), FILTER_DELAY_MS);
+});
+
+window.addEventListener("hashchange", () => {
+  const key = tabFromHash();
+  if (state.data && document.getElementById("panel") && key !== state.tab) selectTab(key);
+});
+
+document.addEventListener("keydown", (event) => {
+  const search = document.getElementById("search");
+  const typing = event.target.closest("input, textarea, select, [contenteditable]");
+  if (event.key !== "/" || !search || typing || event.ctrlKey || event.metaKey || event.altKey) return;
+  event.preventDefault();
+  search.focus();
+});
+
+async function load() {
+  let response;
+  try {
+    response = await fetch("/api/data");
+  } catch {
+    fail(`Couldn't reach the local server. Make sure <code>python track.py serve</code> is still running.`);
+    return;
+  }
+
+  try {
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    state.data = await response.json();
+  } catch (error) {
+    fail(`The server couldn't read your snapshots (${escapeHtml(error.message)}).
+      The terminal running <code>python track.py serve</code> has the details.`);
+    return;
+  }
+  render();
+}
+
+load();
 </script>
 </body>
 </html>
