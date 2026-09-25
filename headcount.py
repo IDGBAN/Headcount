@@ -111,11 +111,18 @@ def parse_link(href: object) -> SplitResult | None:
         return None
 
 
+def foreign_link(link: SplitResult | None) -> bool:
+    # threads lists share the layout but link to threads.com, and hashtags link to /explore/
+    if link is None:
+        return False
+    host = link.hostname
+    on_instagram = not host or host == "instagram.com" or host.endswith(".instagram.com")
+    return not on_instagram or link.path.startswith("/explore/")
+
+
 def pick_handle(entry: dict[str, object], title: object) -> str:
     link = parse_link(entry.get("href"))
-    host = link.hostname if link else None
-    # threads lists use the same layout, but their links point at threads.com
-    if host and host != "instagram.com" and not host.endswith(".instagram.com"):
+    if foreign_link(link):
         return ""
 
     # following.json entries have no "value", the handle is only in the href and the parent's title
@@ -165,7 +172,12 @@ def export_files(source: Path) -> Iterator[tuple[str, Callable[[], bytes]]]:
                 yield path.relative_to(source).as_posix(), path.read_bytes
 
     elif zipfile.is_zipfile(source):
-        with zipfile.ZipFile(source) as archive:
+        try:
+            archive = zipfile.ZipFile(source)
+        except (OSError, zipfile.BadZipFile) as error:
+            raise SystemExit(f"couldn't open {source} ({error})\n"
+                             "try downloading the export again") from None
+        with archive:
             for info in archive.infolist():
                 if not info.is_dir():
                     # zipfile only turns backslash separators into slashes on windows
@@ -181,14 +193,14 @@ def load_follow_list(path: str, read: Callable[[], bytes], source: Path) -> obje
     try:
         raw = read()
     except (OSError, zipfile.BadZipFile, zlib.error, NotImplementedError, RuntimeError) as error:
-        raise SystemExit(f"couldn't read {path} from {source.name} ({error})\n"
+        raise SystemExit(f"couldn't read {path} from {source} ({error})\n"
                          "try downloading the export again") from None
 
     # skipping a broken list would make everyone on it look like they left
     try:
         return json.loads(raw.decode("utf-8-sig"))
     except (UnicodeDecodeError, json.JSONDecodeError):
-        raise SystemExit(f"{path} in {source.name} isn't valid JSON\n"
+        raise SystemExit(f"{path} in {source} isn't valid JSON\n"
                          "try downloading the export again") from None
 
 
@@ -224,7 +236,7 @@ def build_snapshot(source: Path) -> Snapshot:
     missing = [kind for kind in KINDS if kind not in found_lists]
     if missing:
         raise SystemExit(
-            f"{source.name} has no {missing[0]} list, so it can't be compared "
+            f"{source} has no {missing[0]} list, so it can't be compared "
             "with other snapshots\n"
             "request the export again with both followers and following included"
         )
@@ -256,6 +268,21 @@ def parse_time(stamp: str) -> datetime:
     return moment if moment.tzinfo else moment.astimezone()
 
 
+def stored_account(account: object) -> Account | None:
+    """Re-check an account read back from a snapshot, since older versions saved more loosely."""
+    if not isinstance(account, dict) or not isinstance(account.get("username"), str):
+        return None
+    handle = normalise_handle(account["username"])
+    if not HANDLE_PATTERN.fullmatch(handle) or foreign_link(parse_link(account.get("href"))):
+        return None
+    timestamp = account.get("timestamp")
+    return {
+        "username": handle,
+        "href": profile_url(handle),
+        "timestamp": timestamp if isinstance(timestamp, int) else None,
+    }
+
+
 def read_snapshot(path: Path) -> Snapshot | None:
     try:
         data = json.loads(path.read_text(encoding="utf-8-sig"))
@@ -266,8 +293,8 @@ def read_snapshot(path: Path) -> Snapshot | None:
     if not all(isinstance(data.get(kind), list) for kind in KINDS):
         return None
     for kind in KINDS:
-        data[kind] = [account for account in data[kind]
-                      if isinstance(account, dict) and isinstance(account.get("username"), str)]
+        accounts = (stored_account(account) for account in data[kind])
+        data[kind] = [account for account in accounts if account]
     return cast(Snapshot, data)
 
 
@@ -339,14 +366,15 @@ def analyse(snapshots: list[Snapshot]) -> dict[str, object]:
             "mutuals": len(followers & following),
         },
         "not_following_back": expand(following - followers - ignored),
+        "ignored": len((following - followers) & ignored),
         "not_followed_back": expand(followers - following),
         "since_last": timeline[-1] if timeline else None,
         "timeline": list(reversed(timeline)),
     }
 
 
-# the viewer's script and styles are inline, everything else (including fetches to
-# other origins) is refused
+# only the inline script and styles, data: images (the favicon) and fetches back to this
+# server are allowed
 CONTENT_POLICY = ("default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; "
                   "img-src data:; connect-src 'self'; base-uri 'none'; form-action 'none'; "
                   "frame-ancestors 'none'")
@@ -358,7 +386,11 @@ class LocalServer(ThreadingHTTPServer):
 
     def server_bind(self) -> None:
         super().server_bind()
-        self.allowed_hosts = {f"127.0.0.1:{self.server_port}", f"localhost:{self.server_port}"}
+        names = {"127.0.0.1", "localhost"}
+        self.allowed_hosts = {f"{name}:{self.server_port}" for name in names}
+        # browsers leave the port out of the Host header when it's the default one
+        if self.server_port == 80:
+            self.allowed_hosts |= names
 
     def handle_error(self, request: socket.socket | tuple[bytes, socket.socket],
                      client_address: Any) -> None:
