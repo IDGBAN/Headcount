@@ -232,6 +232,13 @@ class BuildSnapshotTests(TempDirTest):
         self.assertEqual(track.handles(built, "followers"), {"amy"})
         self.assertEqual(track.handles(built, "following"), {"cat"})
 
+    def test_damaged_central_directory(self):
+        path = write_zip(self.tmp / "export.zip", export_files(["amy"], ["cat"]))
+        path.write_bytes(path.read_bytes().replace(b"PK\x01\x02", b"XX\x01\x02", 1))
+        with self.assertRaises(SystemExit) as caught:
+            track.build_snapshot(path)
+        self.assertIn("couldn't open", str(caught.exception))
+
     def test_bad_paths(self):
         with self.assertRaises(SystemExit) as caught:
             track.build_snapshot(self.tmp / "nope.zip")
@@ -288,6 +295,20 @@ class StorageTests(TempDirTest):
         (track.SNAPSHOT_DIR / "a.json").write_text(json.dumps(data), encoding="utf-8")
         self.assertEqual(track.handles(track.load_snapshots()[0], "followers"), {"amy"})
 
+    def test_accounts_saved_by_older_versions_are_cleaned(self):
+        data = snapshot("2026-01-01T10:00:00+00:00", ["amy"], ["cat"])
+        data["following"] += [
+            {"username": "sunsets", "href": "https://www.instagram.com/explore/tags/sunsets"},
+            {"username": "tina", "href": "https://www.threads.net/@tina"},
+            {"username": "Dan", "href": "https://www.instagram.com/_u/Dan", "timestamp": 5},
+        ]
+        track.SNAPSHOT_DIR.mkdir()
+        (track.SNAPSHOT_DIR / "old.json").write_text(json.dumps(data), encoding="utf-8")
+        loaded = track.load_snapshots()[0]
+        self.assertEqual(track.handles(loaded, "following"), {"cat", "dan"})
+        self.assertIn({"username": "dan", "href": "https://www.instagram.com/dan/",
+                       "timestamp": 5}, loaded["following"])
+
     def test_missing_folder(self):
         self.assertEqual(track.load_snapshots(), [])
 
@@ -331,6 +352,7 @@ class AnalyseTests(unittest.TestCase):
         with mock.patch.object(track, "IGNORE", ["@Brand"]):
             result = track.analyse(data)
         self.assertEqual([a["username"] for a in result["not_following_back"]], ["pal"])
+        self.assertEqual(result["ignored"], 1)
 
 
 class IngestTests(TempDirTest):
